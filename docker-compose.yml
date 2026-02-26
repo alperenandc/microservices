@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  dispatcher:
+    build: ./dispatcher
+    container_name: dispatcher_service
+    ports:
+      - "8080:8080" 
+    networks:
+      - internal_network
+    depends_on:
+      - mongo_dispatcher
+    environment:
+      - PORT=8080
+      - MONGO_URI=mongodb://mongo_dispatcher:27017/dispatcher_db
+      - USER_SERVICE_URL=http://user_service:3001
+      - PRODUCT_SERVICE_URL=http://product_service:3002
+
+  mongo_dispatcher:
+    image: mongo:latest
+    container_name: mongo_dispatcher_db
+    networks:
+      - internal_network
+
+  user_service:
+    build: ./user-service
+    container_name: user_service
+    expose:
+      - "3001" # ports yerine expose kullanıyoruz. Dışarıdan erişilemez, sadece iç ağdan (Dispatcher'dan) erişilebilir!
+    networks:
+      - internal_network
+    depends_on:
+      - mongo_user
+    environment:
+      - PORT=3001
+      - MONGO_URI=mongodb://mongo_user:27017/user_db
+
+  mongo_user:
+    image: mongo:latest
+    container_name: mongo_user_db
+    networks:
+      - internal_network
+
+  product_service:
+    build: ./product-service
+    container_name: product_service
+    expose:
+      - "3002" # Sadece iç ağdan erişilebilir.
+    networks:
+      - internal_network
+    depends_on:
+      - mongo_product
+    environment:
+      - PORT=3002
+      - MONGO_URI=mongodb://mongo_product:27017/product_db
+
+  mongo_product:
+    image: mongo:latest
+    container_name: mongo_product_db
+    networks:
+      - internal_network
+
+networks:
+  internal_network:
+    driver: bridge
