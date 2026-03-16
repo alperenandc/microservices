@@ -33,17 +33,14 @@ describe("Dispatcher (API Gateway) Testleri", () => {
     expect(response.body).toHaveProperty("error", true);
   });
 
-  test("2. /health rotasına gelen istekler yetki sormadan geçmeli (Proxy Mock Test)", async () => {
+  test("2. /health rotasına gelen istekler yetki sormadan geçmeli", async () => {
     const response = await request(app).get("/api/users/health");
 
-    // app.js'de mock yönlendirme yaptığımız veya health check'e izin verdiğimiz için 200 veya 404 bekleyebiliriz
-    // Şu anki app.js'de authMiddleware'den geçip route not found'a düşüyor olabilir, 
-    // ama önemli olan 401 (Yetkisiz) DÖNMEMESİDİR.
+    // Token sormadığı için 401 (Unauthorized) dönmemelidir.
     expect(response.status).not.toBe(401);
   });
 
   test("3. Hiç token gönderilmediğinde HTTP 401 Unauthorized dönmeli (Proje İsteri 3.1)", async () => {
-    // Headers kısmında "Authorization" token'ı OLMADAN istek atıyoruz
     const response = await request(app).get("/api/users");
 
     expect(response.status).toBe(401);
@@ -52,7 +49,6 @@ describe("Dispatcher (API Gateway) Testleri", () => {
   });
 
   test("4. Veritabanında OLMAYAN (Yanlış) bir token gönderildiğinde HTTP 401 dönmeli", async () => {
-    // Yanlış bir token ile istek atıyoruz
     const response = await request(app)
       .get("/api/users")
       .set("authorization", "YANLIS_TOKEN_456");
@@ -62,14 +58,26 @@ describe("Dispatcher (API Gateway) Testleri", () => {
     expect(response.body.message).toMatch(/Geçersiz veya süresi dolmuş token/i);
   });
 
-  test("5. Veritabanında KAYITLI (Doğru) bir token ile gelindiğinde erişime izin verilmeli (HTTP 200)", async () => {
-    // beforeAll bloğunda veritabanına eklediğimiz DOĞRU token ile istek atıyoruz
+  // GÜNCELLENEN TEST: User Service Yönlendirmesi
+  test("5. Veritabanında KAYITLI (Doğru) bir token ile User Servisine erişime izin verilmeli", async () => {
     const response = await request(app)
       .get("/api/users")
       .set("authorization", "SECRET_TEST_TOKEN_123");
 
-    // Token doğru olduğu için içeri girmeli ve mock mesajımızı almalıyız
-    expect(response.status).toBe(200);
-    expect(response.body.message).toMatch(/User servisine yönlendirildi/i);
+    // Token doğru olduğu için içeri girmeli. Ancak test anında arkada user_service kapalı olduğu için 
+    // Axios bağlanamayacak ve Dispatcher bize 401 (Unauthorized) DEĞİL, 502 (Bad Gateway) dönecektir.
+    expect(response.status).toBe(502);
+    expect(response.body.message).toMatch(/Bad Gateway/i);
+  });
+
+  // YENİ EKLENEN TEST: Product Service Yönlendirmesi
+  test("6. Veritabanında KAYITLI (Doğru) bir token ile Product Servisine erişime izin verilmeli", async () => {
+    const response = await request(app)
+      .get("/api/products")
+      .set("authorization", "SECRET_TEST_TOKEN_123");
+
+    // Aynı şekilde Product servisi için de yetki onaylanıp 502 Proxy hatası dönmeli
+    expect(response.status).toBe(502);
+    expect(response.body.message).toMatch(/Bad Gateway/i);
   });
 });
