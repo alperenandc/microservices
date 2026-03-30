@@ -42,7 +42,7 @@ describe("Dispatcher (API Gateway) Testleri", () => {
 
     expect(response.status).toBe(401);
     expect(response.body).toHaveProperty("error", true);
-    expect(response.body.message).toMatch(/Geçerli bir token bulunamadı/i);
+    expect(response.body.message).toMatch(/Gecerli bir token bulunamadi/i);
   });
 
   test("4. Auth servisinin reddettigi token icin HTTP 401 donmeli", async () => {
@@ -84,7 +84,60 @@ describe("Dispatcher (API Gateway) Testleri", () => {
     );
   });
 
-  test("6. Auth service ulasilamazsa HTTP 502 donmeli", async () => {
+  test("6. User Service icin path, method, body ve header bilgileri dogru tasinmali", async () => {
+    axios
+      .mockResolvedValueOnce({ status: 200, data: { valid: true, username: "admin" } })
+      .mockResolvedValueOnce({
+        status: 201,
+        data: { id: "u1", name: "Ali", email: "ali@example.com" },
+      });
+
+    const payload = { name: "Ali", email: "ali@example.com", age: 22 };
+
+    const response = await request(app)
+      .post("/api/users/extra?sort=desc")
+      .set("authorization", "SECRET_TEST_TOKEN_123")
+      .send(payload);
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      id: "u1",
+      name: "Ali",
+      email: "ali@example.com",
+    });
+    expect(axios).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        method: "POST",
+        url: "http://localhost:3001/api/users/extra?sort=desc",
+        data: payload,
+        headers: expect.objectContaining({
+          authorization: "SECRET_TEST_TOKEN_123",
+          "x-internal-gateway-key": expect.any(String),
+        }),
+      })
+    );
+  });
+
+  test("7. Upstream hata kodu ve govdesi aynen istemciye tasinmali", async () => {
+    axios
+      .mockResolvedValueOnce({ status: 200, data: { valid: true, username: "admin" } })
+      .mockRejectedValueOnce({
+        response: {
+          status: 404,
+          data: { error: true, message: "Kayit bulunamadi" },
+        },
+      });
+
+    const response = await request(app)
+      .get("/api/products/404-test")
+      .set("authorization", "SECRET_TEST_TOKEN_123");
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: true, message: "Kayit bulunamadi" });
+  });
+
+  test("8. Auth service ulasilamazsa HTTP 502 donmeli", async () => {
     axios.mockRejectedValueOnce(new Error("connect ECONNREFUSED"));
 
     const response = await request(app)
