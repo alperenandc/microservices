@@ -3,8 +3,30 @@ const mongoose = require("mongoose");
 const morgan = require("morgan");
 
 const app = express();
+const INTERNAL_GATEWAY_KEY =
+  process.env.INTERNAL_GATEWAY_KEY || "dispatcher-internal-key";
+
 app.use(express.json());
 app.use(morgan("dev"));
+
+function internalGatewayMiddleware(req, res, next) {
+  if (req.path === "/health") {
+    return next();
+  }
+
+  const gatewayKey = req.headers["x-internal-gateway-key"];
+
+  if (gatewayKey !== INTERNAL_GATEWAY_KEY) {
+    return res.status(403).json({
+      error: true,
+      message: "Bu servise sadece dispatcher uzerinden erisilebilir.",
+    });
+  }
+
+  return next();
+}
+
+app.use(internalGatewayMiddleware);
 
 // 1. Kendi Bağımsız Veritabanı Modeli (Network Isolation & Data Isolation)
 const userSchema = new mongoose.Schema({

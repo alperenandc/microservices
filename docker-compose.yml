@@ -8,17 +8,42 @@ services:
       - "8080:8080" 
     networks:
       - internal_network
-    depends_on:
-      - mongo_dispatcher
     environment:
       - PORT=8080
       - MONGO_URI=mongodb://mongo_dispatcher:27017/dispatcher_db
+      - AUTH_SERVICE_URL=http://auth_service:3003
       - USER_SERVICE_URL=http://user_service:3001
       - PRODUCT_SERVICE_URL=http://product_service:3002
+      - INTERNAL_GATEWAY_KEY=dispatcher-internal-key
+    depends_on:
+      - mongo_dispatcher
+      - auth_service
 
   mongo_dispatcher:
     image: mongo:latest
     container_name: mongo_dispatcher_db
+    networks:
+      - internal_network
+
+  auth_service:
+    build: ./auth-service
+    container_name: auth_service
+    expose:
+      - "3003"
+    networks:
+      - internal_network
+    depends_on:
+      - mongo_auth
+    environment:
+      - PORT=3003
+      - MONGO_URI=mongodb://mongo_auth:27017/auth_db
+      - AUTH_DEFAULT_USERNAME=admin
+      - AUTH_DEFAULT_PASSWORD=admin123
+      - INTERNAL_GATEWAY_KEY=dispatcher-internal-key
+
+  mongo_auth:
+    image: mongo:latest
+    container_name: mongo_auth_db
     networks:
       - internal_network
 
@@ -34,6 +59,7 @@ services:
     environment:
       - PORT=3001
       - MONGO_URI=mongodb://mongo_user:27017/user_db
+      - INTERNAL_GATEWAY_KEY=dispatcher-internal-key
 
   mongo_user:
     image: mongo:latest
@@ -53,6 +79,7 @@ services:
     environment:
       - PORT=3002
       - MONGO_URI=mongodb://mongo_product:27017/product_db
+      - INTERNAL_GATEWAY_KEY=dispatcher-internal-key
 
   mongo_product:
     image: mongo:latest
