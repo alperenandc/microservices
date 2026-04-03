@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispatcher Trafik & Log Arayüzü</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: auto; }
+        .header { background-color: #2c3e50; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        .card { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #34495e; color: white; }
+        tr:hover { background-color: #f5f5f5; }
+        .badge { padding: 5px 10px; border-radius: 4px; font-weight: bold; color: white; }
+        .badge-get { background-color: #2ecc71; }
+        .badge-post { background-color: #3498db; }
+        .badge-put { background-color: #f1c40f; }
+        .badge-delete { background-color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 API Gateway (Dispatcher) Log İzleme Ekranı</h1>
+            <p>TDD (Test-Driven Development) Katmanlı Log Sistemi</p>
+        </div>
+
+        <div class="card">
+            <h2>Son İstekler (Trafik Logları)</h2>
+            <button onclick="fetchLogs()" style="padding: 10px; cursor: pointer; background: #2c3e50; color: white; border: none; border-radius: 4px;">Logları Yenile 🔄</button>
+            <table id="logsTable">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Method</th>
+                        <th>URL Yolu</th>
+                        <th>IP Adresi</th>
+                        <th>Tarayıcı (User-Agent)</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr><td colspan="5" style="text-align: center;">Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function fetchLogs() {
+            try {
+                // Dispatcher üzerinden log endpointini çağıracağız
+                const response = await fetch('/api/logs');
+                const logs = await response.json();
+                
+                const tbody = document.getElementById('logsBody');
+                tbody.innerHTML = ''; // Temizle
+                
+                if(logs.length === 0){
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Henüz log bulunamadı.</td></tr>';
+                    return;
+                }
+
+                logs.forEach(log => {
+                    const row = `<tr>
+                        <td>${new Date(log.timestamp).toLocaleString('tr-TR')}</td>
+                        <td><span class="badge ${getBadgeClass(log.method)}">${log.method}</span></td>
+                        <td>${log.url}</td>
+                        <td>${log.ip}</td>
+                        <td><small>${log.userAgent ? log.userAgent.substring(0, 50) + '...' : 'Bulunamadı'}</small></td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Log çekme hatası:', error);
+            }
+        }
+
+        function getBadgeClass(method) {
+            switch(method) {
+                case 'GET': return 'badge-get';
+                case 'POST': return 'badge-post';
+                case 'PUT': return 'badge-put';
+                case 'DELETE': return 'badge-delete';
+                default: return 'badge-get';
+            }
+        }
+
+        // İlk yüklemede çalıştır
+        fetchLogs();
+        // Her 5 saniyede bir otomatik yenile
+        setInterval(fetchLogs, 5000);
+    </script>
+</body>
+</html>

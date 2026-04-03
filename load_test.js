@@ -70,7 +70,7 @@ export default function (data) {
 
   sleep(0.2);
 
-  // SENARYO 2: Kullanıcı listesini getir (User GET) - GET /api/users JWT gerektiriyor
+  // SENARYO 2: Kullanıcı listesini getir (User GET)
   group('Users API', () => {
     const res = http.get(`${BASE_URL}/api/users`, params);
     responseTime.add(res.timings.duration);
