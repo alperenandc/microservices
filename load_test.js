@@ -30,16 +30,35 @@ export const options = {
 // Docker Compose içinde k6 servisi Dispatcher'a bu isimle ulaşır
 // Yerel çalıştırmada 'localhost:8080' kullanılır
 const BASE_URL = __ENV.BASE_URL || 'http://dispatcher:8080';
-const AUTH_TOKEN = 'SECRET123';
 
-const params = {
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': AUTH_TOKEN,
-  },
-};
+// Her VU başında login ol ve token al
+function getJwtToken() {
+  const loginPayload = JSON.stringify({ username: 'k6user', password: 'k6pass' });
+  const loginRes = http.post(`${BASE_URL}/api/users/login`, loginPayload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (loginRes.status === 200 && loginRes.json('token')) {
+    return loginRes.json('token');
+  }
+  // Eğer kullanıcı yoksa, önce register et, sonra login ol
+  http.post(`${BASE_URL}/api/users`, loginPayload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const retryLogin = http.post(`${BASE_URL}/api/users/login`, loginPayload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return retryLogin.json('token');
+}
 
 export default function () {
+  // Her VU için login ve token al
+  const token = getJwtToken();
+  const params = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  };
 
   // SENARYO 1: Ürün listesini getir (Product GET)
   group('Products API', () => {
@@ -54,7 +73,7 @@ export default function () {
 
   sleep(0.2);
 
-  // SENARYO 2: Kullanıcı listesini getir (User GET) - GET /api/users JWT gerektiriyor
+  // SENARYO 2: Kullanıcı listesini getir (User GET)
   group('Users API', () => {
     const res = http.get(`${BASE_URL}/api/users`, params);
     responseTime.add(res.timings.duration);
