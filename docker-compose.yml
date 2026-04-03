@@ -116,6 +116,21 @@ services:
     networks:
       - internal_network
 
+  k6:
+    image: grafana/k6:latest
+    profiles: ["load-test"]
+    container_name: k6_load_test
+    volumes:
+      - ./load_test.js:/scripts/load_test.js
+      - ./k6-results:/results
+    environment:
+      - BASE_URL=http://dispatcher:8080
+    command: run --out json=/results/results.json /scripts/load_test.js
+    depends_on:
+      - dispatcher
+    networks:
+      - internal_network
+
 networks:
   internal_network:
     driver: bridge
