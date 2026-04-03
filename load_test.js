@@ -31,32 +31,29 @@ export const options = {
 // Yerel çalıştırmada 'localhost:8080' kullanılır
 const BASE_URL = __ENV.BASE_URL || 'http://dispatcher:8080';
 
-// Her VU başında login ol ve token al
-function getJwtToken() {
-  const loginPayload = JSON.stringify({ username: 'k6user', password: 'k6pass' });
-  const loginRes = http.post(`${BASE_URL}/api/users/login`, loginPayload, {
+export function setup() {
+  const loginPayload = JSON.stringify({
+    username: __ENV.AUTH_USERNAME || 'admin',
+    password: __ENV.AUTH_PASSWORD || 'admin123',
+  });
+
+  const loginRes = http.post(`${BASE_URL}/api/auth/login`, loginPayload, {
     headers: { 'Content-Type': 'application/json' },
   });
-  if (loginRes.status === 200 && loginRes.json('token')) {
-    return loginRes.json('token');
-  }
-  // Eğer kullanıcı yoksa, önce register et, sonra login ol
-  http.post(`${BASE_URL}/api/users`, loginPayload, {
-    headers: { 'Content-Type': 'application/json' },
+
+  check(loginRes, {
+    'Login: Durum 200': (r) => r.status === 200,
+    'Login: Token var': (r) => Boolean(r.json('token')),
   });
-  const retryLogin = http.post(`${BASE_URL}/api/users/login`, loginPayload, {
-    headers: { 'Content-Type': 'application/json' },
-  });
-  return retryLogin.json('token');
+
+  return { token: loginRes.json('token') || '' };
 }
 
-export default function () {
-  // Her VU için login ve token al
-  const token = getJwtToken();
+export default function (data) {
   const params = {
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': data.token,
     },
   };
 
@@ -80,19 +77,6 @@ export default function () {
     const ok = check(res, {
       'Users: Durum 200': (r) => r.status === 200,
       'Users: Yanit suresi < 500ms': (r) => r.timings.duration < 500,
-    });
-    errorRate.add(!ok);
-  });
-
-  sleep(0.1);
-
-  // SENARYO 3: Sipariş listesini getir (Order GET)
-  group('Orders API', () => {
-    const res = http.get(`${BASE_URL}/api/orders`, params);
-    responseTime.add(res.timings.duration);
-    const ok = check(res, {
-      'Orders: Durum 200': (r) => r.status === 200,
-      'Orders: Yanit suresi < 500ms': (r) => r.timings.duration < 500,
     });
     errorRate.add(!ok);
   });

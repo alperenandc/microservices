@@ -1,13 +1,15 @@
-FROM node:20.18-alpine
+# Node.js'in hafif bir versiyonunu kullanıyoruz
+FROM node:18-alpine
 
-WORKDIR /usr/src/app
+# Konteyner içindeki çalışma dizinini belirliyoruz
+WORKDIR /app
 
+# Önce paket bilgilerini kopyalayıp npm install yapıyoruz
 COPY package*.json ./
-
 RUN npm install
 
+# Geri kalan tüm kodları (app.js vb.) kopyalıyoruz
 COPY . .
 
-EXPOSE 3002
-
-CMD ["node", "index.js"]
+# Uygulamayı başlatıyoruz
+CMD ["node", "app.js"]

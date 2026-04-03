@@ -1,9 +1,17 @@
-const express = require('express');
-const app = express();
+const mongoose = require('mongoose');
+const { createApp } = require("./src/createApp");
+const { createConfig } = require("./src/config");
 
-// ÜRÜN LİSTESİ 
-app.get('/api/products', (req, res) => {
-    res.json([{ id: 101, name: "Klavye" }, { id: 102, name: "Mouse" }]);
-});
+const config = createConfig();
+const { app } = createApp({ config });
 
-app.listen(3002, () => console.log("Product odası 3002 portunda hazır!"));
+mongoose.connect(config.mongoUri)
+    .then(() => {
+        console.log("Product Service veritabanına başarıyla bağlandı.");
+        app.listen(config.port, () => {
+            console.log(`Product Service ${config.port} portunda çalışıyor.`);
+        });
+    })
+    .catch((err) => console.error("MongoDB Bağlantı Hatası:", err));
+
+module.exports = { app };
