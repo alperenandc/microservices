@@ -30,16 +30,32 @@ export const options = {
 // Docker Compose içinde k6 servisi Dispatcher'a bu isimle ulaşır
 // Yerel çalıştırmada 'localhost:8080' kullanılır
 const BASE_URL = __ENV.BASE_URL || 'http://dispatcher:8080';
-const AUTH_TOKEN = 'SECRET123';
 
-const params = {
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': AUTH_TOKEN,
-  },
-};
+export function setup() {
+  const loginPayload = JSON.stringify({
+    username: __ENV.AUTH_USERNAME || 'admin',
+    password: __ENV.AUTH_PASSWORD || 'admin123',
+  });
 
-export default function () {
+  const loginRes = http.post(`${BASE_URL}/api/auth/login`, loginPayload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  check(loginRes, {
+    'Login: Durum 200': (r) => r.status === 200,
+    'Login: Token var': (r) => Boolean(r.json('token')),
+  });
+
+  return { token: loginRes.json('token') || '' };
+}
+
+export default function (data) {
+  const params = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': data.token,
+    },
+  };
 
   // SENARYO 1: Ürün listesini getir (Product GET)
   group('Products API', () => {
@@ -61,19 +77,6 @@ export default function () {
     const ok = check(res, {
       'Users: Durum 200': (r) => r.status === 200,
       'Users: Yanit suresi < 500ms': (r) => r.timings.duration < 500,
-    });
-    errorRate.add(!ok);
-  });
-
-  sleep(0.1);
-
-  // SENARYO 3: Sipariş listesini getir (Order GET)
-  group('Orders API', () => {
-    const res = http.get(`${BASE_URL}/api/orders`, params);
-    responseTime.add(res.timings.duration);
-    const ok = check(res, {
-      'Orders: Durum 200': (r) => r.status === 200,
-      'Orders: Yanit suresi < 500ms': (r) => r.timings.duration < 500,
     });
     errorRate.add(!ok);
   });

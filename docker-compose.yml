@@ -18,6 +18,7 @@ services:
     depends_on:
       - mongo_dispatcher
       - auth_service
+      - prometheus
 
   mongo_dispatcher:
     image: mongo:latest
@@ -84,6 +85,34 @@ services:
   mongo_product:
     image: mongo:latest
     container_name: mongo_product_db
+    networks:
+      - internal_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - internal_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
     networks:
       - internal_network
 
