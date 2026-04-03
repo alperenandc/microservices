@@ -8,6 +8,9 @@ const { RouteProxyService } = require("./services/RouteProxyService");
 const { createAuthMiddleware } = require("./middleware/createAuthMiddleware");
 const { createLoginHandler } = require("./handlers/createLoginHandler");
 const { createProxyHandler } = require("./handlers/createProxyHandler");
+const { GatewayAuditLog } = require("./models/GatewayAuditLog");
+const { GatewayAuditLogRepository } = require("./repositories/GatewayAuditLogRepository");
+const { createGatewayObservability } = require("./monitoring/createGatewayObservability");
 
 function createApp(options = {}) {
   const config = options.config || createConfig();
@@ -43,13 +46,35 @@ function createApp(options = {}) {
 
   const authMiddleware =
     options.authMiddleware || createAuthMiddleware(authService);
+  const gatewayAuditLogRepository =
+    options.gatewayAuditLogRepository ||
+    new GatewayAuditLogRepository(GatewayAuditLog);
+  const gatewayObservability =
+    options.gatewayObservability ||
+    createGatewayObservability({ auditLogRepository: gatewayAuditLogRepository });
 
   const app = express();
 
   app.use(express.json());
   app.use(morgan("dev"));
+  app.use(gatewayObservability.middleware);
+
+  app.get("/metrics", gatewayObservability.metricsHandler);
 
   app.post("/api/auth/login", createLoginHandler(authService));
+  app.get("/api/admin/logs", authMiddleware, async (req, res) => {
+    try {
+      const limit = Number(req.query.limit || 100);
+      const logs = await gatewayAuditLogRepository.listRecent(limit);
+      return res.status(200).json(logs);
+    } catch (error) {
+      return res.status(500).json({
+        error: true,
+        message: "Gateway loglari okunurken hata olustu.",
+      });
+    }
+  });
+
   app.use(
     "/api/users",
     authMiddleware,
