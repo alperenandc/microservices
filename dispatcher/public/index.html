@@ -35,9 +35,9 @@
                     <tr>
                         <th>Tarih</th>
                         <th>Method</th>
-                        <th>URL Yolu</th>
-                        <th>IP Adresi</th>
-                        <th>Tarayıcı (User-Agent)</th>
+                        <th>Path</th>
+                        <th>Status</th>
+                        <th>Servis</th>
                     </tr>
                 </thead>
                 <tbody id="logsBody">
@@ -64,11 +64,11 @@
 
                 logs.forEach(log => {
                     const row = `<tr>
-                        <td>${new Date(log.timestamp).toLocaleString('tr-TR')}</td>
+                        <td>${new Date(log.createdAt).toLocaleString('tr-TR')}</td>
                         <td><span class="badge ${getBadgeClass(log.method)}">${log.method}</span></td>
-                        <td>${log.url}</td>
-                        <td>${log.ip}</td>
-                        <td><small>${log.userAgent ? log.userAgent.substring(0, 50) + '...' : 'Bulunamadı'}</small></td>
+                        <td>${log.path}</td>
+                        <td>${log.statusCode}</td>
+                        <td>${log.targetService}</td>
                     </tr>`;
                     tbody.innerHTML += row;
                 });

@@ -29,7 +29,8 @@ export const options = {
 
 // Docker Compose içinde k6 servisi Dispatcher'a bu isimle ulaşır
 // Yerel çalıştırmada 'localhost:8080' kullanılır
-const BASE_URL = __ENV.BASE_URL || 'http://dispatcher:8080';
+
+const BASE_URL = __ENV.BASE_URL || 'http://host.docker.internal:8080';
 
 export function setup() {
   const loginPayload = JSON.stringify({

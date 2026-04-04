@@ -47,7 +47,7 @@ Tüm servisler REST standartları (RMM Level 2) göz önünde bulundurularak tas
 | Servis | Metot | URL Endpoint | Açıklama |
 |---|---|---|---|
 | User | `POST` | `/api/users` | Yeni Kullanıcı Kaydı |
-| User | `POST` | `/api/users/login` | Sisteme Kimlik Doğrulama (JWT Üretimi) |
+| Auth | `POST` | `/api/auth/login` | Sisteme Kimlik Doğrulama (JWT Üretimi) |
 | Product | `GET` | `/api/products` | Tüm Ürünleri Listele |
 | Product | `POST` | `/api/products` | Yeni Ürün Ekle |
 | Product | `PUT` | `/api/products/:id` | Ürün Bilgisi Güncelle |

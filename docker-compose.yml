@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   dispatcher:
     build: ./dispatcher
@@ -14,6 +12,7 @@ services:
       - AUTH_SERVICE_URL=http://auth_service:3003
       - USER_SERVICE_URL=http://user_service:3001
       - PRODUCT_SERVICE_URL=http://product_service:3002
+      - ORDER_SERVICE_URL=http://order_service:3004
       - INTERNAL_GATEWAY_KEY=dispatcher-internal-key
     depends_on:
       - mongo_dispatcher
@@ -52,7 +51,7 @@ services:
     build: ./user-service
     container_name: user_service
     expose:
-      - "3001" # ports yerine expose kullanıyoruz. Dışarıdan erişilemez, sadece iç ağdan (Dispatcher'dan) erişilebilir!
+      - "3001" # Dışarıdan erişilemez, sadece iç ağdan erişilebilir!
     networks:
       - internal_network
     depends_on:
@@ -88,6 +87,26 @@ services:
     networks:
       - internal_network
 
+  order_service:
+    build: ./order-service
+    container_name: order_service
+    expose:
+      - "3004"
+    networks:
+      - internal_network
+    depends_on:
+      - mongo_order
+    environment:
+      - PORT=3004
+      - DB_URI=mongodb://mongo_order:27017/orders
+      - INTERNAL_GATEWAY_KEY=dispatcher-internal-key
+
+  mongo_order:
+    image: mongo:latest
+    container_name: mongo_order_db
+    networks:
+      - internal_network
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -97,6 +116,17 @@ services:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
+    networks:
+      - internal_network
+
+  # K6 Test Verilerini Toplayacak Olan Veritabanımız
+  influxdb:
+    image: influxdb:1.8
+    container_name: influxdb_db
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
     networks:
       - internal_network
 
@@ -113,21 +143,24 @@ services:
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+      - influxdb
     networks:
       - internal_network
 
+  # Hazır Profilimiz: Sadece biz tetiklediğimizde çalışacak
   k6:
     image: grafana/k6:latest
     profiles: ["load-test"]
     container_name: k6_load_test
     volumes:
-      - ./load_test.js:/scripts/load_test.js
+      - ./load-test/load_test.js:/scripts/load_test.js
       - ./k6-results:/results
     environment:
       - BASE_URL=http://dispatcher:8080
-    command: run --out json=/results/results.json /scripts/load_test.js
+    command: run --out influxdb=http://influxdb:8086/k6 /scripts/load_test.js
     depends_on:
       - dispatcher
+      - influxdb
     networks:
       - internal_network
 

@@ -11,6 +11,13 @@ function authMiddleware(req, res, next) {
     if (req.method === 'GET' && req.path === '/health') {
         return next();
     }
+
+    // Gateway'den gelen iç ağ isteğini ek JWT kontrolü olmadan kabul et.
+    const internalKey = req.headers['x-internal-gateway-key'];
+    if (internalKey && internalKey === (process.env.INTERNAL_GATEWAY_KEY || 'dispatcher-internal-key')) {
+        return next();
+    }
+
     const authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ message: 'Token gerekli veya format hatalı' });

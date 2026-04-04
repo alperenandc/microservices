@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const morgan = require("morgan");
 const { createConfig } = require("./config");
 const { ProxyClient } = require("./http/ProxyClient");
@@ -44,6 +45,15 @@ function createApp(options = {}) {
       headerFactory,
     });
 
+  const orderRouteProxy =
+    options.orderRouteProxy ||
+    new RouteProxyService({
+      proxyClient,
+      baseUrl: config.orderServiceUrl,
+      resourceBasePath: "/api/orders",
+      headerFactory,
+    });
+
   const authMiddleware =
     options.authMiddleware || createAuthMiddleware(authService);
   const gatewayAuditLogRepository =
@@ -58,10 +68,28 @@ function createApp(options = {}) {
   app.use(express.json());
   app.use(morgan("dev"));
   app.use(gatewayObservability.middleware);
+  app.use("/ui", express.static(path.join(__dirname, "..", "public")));
+
+  app.get("/ui", (req, res) => {
+    return res.sendFile(path.join(__dirname, "..", "public", "index.html"));
+  });
 
   app.get("/metrics", gatewayObservability.metricsHandler);
 
   app.post("/api/auth/login", createLoginHandler(authService));
+  app.get("/api/logs", async (req, res) => {
+    try {
+      const limit = Number(req.query.limit || 100);
+      const logs = await gatewayAuditLogRepository.listRecent(limit);
+      return res.status(200).json(logs);
+    } catch (error) {
+      return res.status(500).json({
+        error: true,
+        message: "Gateway loglari okunurken hata olustu.",
+      });
+    }
+  });
+
   app.get("/api/admin/logs", authMiddleware, async (req, res) => {
     try {
       const limit = Number(req.query.limit || 100);
@@ -87,6 +115,11 @@ function createApp(options = {}) {
       productRouteProxy,
       "Bad Gateway - Product Service ulasilamiyor"
     )
+  );
+  app.use(
+    "/api/orders",
+    authMiddleware,
+    createProxyHandler(orderRouteProxy, "Bad Gateway - Order Service ulasilamiyor")
   );
 
   app.use((req, res) => {

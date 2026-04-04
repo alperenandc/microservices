@@ -29,6 +29,10 @@ function resolveRouteGroup(path) {
     return "product-service";
   }
 
+  if (path.startsWith("/api/orders")) {
+    return "order-service";
+  }
+
   if (path.startsWith("/api/auth")) {
     return "auth-service";
   }
