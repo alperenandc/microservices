@@ -3,8 +3,8 @@
 Bu proje Kocaeli Üniversitesi Bilişim Sistemleri Mühendisliği "Yazılım Geliştirme Laboratuvarı-II" dersi kapsamında **Test-Driven Development (TDD)** disiplini kullanılarak geliştirilmiş bir Mikroservis Mimarisidir.
 
 ## Proje Bilgileri
-- **Geliştiriciler**: Eren, Alperen (Örnek)
-- **Tarih**: 11 Mart 2026
+- **Geliştiriciler**: Alperen Andiç 231307073 - Eren Dağlı 231307033
+- **Grup No**: 49
 - **Ana Teknolojiler**: Node.js, Express.js, MongoDB, Docker, Jest, K6, Mermaid.
 
 ## Sistem Mimarisi ve İzolasyon (Network Isolation)
@@ -35,10 +35,7 @@ graph TD
         OrderService --> OrderDB
     end
 
-    classDef public fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef private fill:#bbf,stroke:#333,stroke-width:2px;
-    class Dispatcher public;
-    class AuthService,ProductService,OrderService private;
+    
 ```
 
 ## Richardson Maturity Model (RMM) - Seviye 2
